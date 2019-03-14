@@ -22,4 +22,19 @@ defmodule ExVertx do
   def publish(address, body, headers \\ %{}) do
     BusServer.publish(address, body, headers)
   end
+
+  @spec register(binary, map) :: :ok
+  def register(address, headers \\ %{}) do
+    BusServer.register(address, headers)
+  end
+
+  # @spec unregister(binary) :: :ok
+  def unregister(address) do
+    BusServer.unregister(address)
+  end
+
+  # @spec stop(binary) :: :ok
+  def stop(address) do
+    BusServer.stop(address)
+  end
 end

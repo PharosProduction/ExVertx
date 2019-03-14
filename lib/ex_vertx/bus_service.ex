@@ -63,6 +63,27 @@ defmodule ExVertx.BusService do
     :gen_tcp.send(socket, msg)
   end
 
+  # @spec register(port, binary, map) :: :ok
+  def register(socket, address, headers) do
+    msg = %{
+      "type" => "register",
+      "address" => address,
+      "headers" => headers
+    } |> Jason.encode!
+
+    :gen_tcp.send(socket, msg)
+  end
+
+  # @spec unregister(port, binary) :: :ok
+  def unregister(socket, address) do
+    msg = %{
+      "type" => "unregister",
+      "address" => address
+    } |> Jason.encode!
+
+    :gen_tcp.send(socket, msg)
+  end
+
   @spec close(port) :: :ok | {:error, atom}
   def close(socket) do
     with :ok <- :gen_tcp.shutdown(socket, :write),
