@@ -8,7 +8,13 @@ defmodule ExVertx do
 
   # Public
 
-  def start_server(id), do: BusSupervisor.start_child(id)
+  @spec start_server(binary, binary, integer) :: {:ok, pid} | {:error, atom}
+  def start_server(address, host, port) do
+    BusSupervisor.start_child(address, [host: host, port: port])
+  end
 
-  def send(id), do: BusServer.send(id)
+  @spec send(binary, map, map, binary) :: {:ok, map} | {:error, atom}
+  def send(address, body, headers \\ %{}, reply_address \\ "") do
+    BusServer.send(address, body, headers, reply_address)
+  end
 end

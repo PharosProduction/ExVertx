@@ -72,7 +72,8 @@ defmodule ExVertx.MixProject do
   defp aliases do
     [
       credo: ["credo --strict"],
-      cover: ["coveralls -u -v"]
+      cover: ["coveralls -u -v"],
+      dialyze: ["dialyzer --format dialyzer"]
     ]
   end
 end
