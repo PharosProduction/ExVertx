@@ -58,6 +58,18 @@ defmodule ExVertx.BusServer do
     end
   end
 
+  @spec publish(binary, map, map) :: :ok
+  def publish(address, body, headers) do
+    params = [
+      address: address,
+      body: body,
+      headers: headers
+    ]
+
+    [pid | _] = :gproc.lookup_pids(topic(address))
+    :gen_statem.call(pid, {:publish, params}, @timeout)
+  end
+
   @spec stop(binary) :: :ok | {:error, atom}
   def stop(address) do
     with [pid | _] <- :gproc.lookup_pids(topic(address)) do
@@ -77,11 +89,36 @@ defmodule ExVertx.BusServer do
       headers: headers,
       reply_address: reply_address
     ] = params
-    {:ok, response} = BusService.send(socket, address, body, headers, reply_address)
+
+    with {:ok, response} <- BusService.send(socket, address, body, headers, reply_address) do
+      actions = [
+        {:state_timeout, @timeout, :code_expired},
+        {:reply, from, {:ok, response}}
+      ]
+
+      {:keep_state_and_data, actions}
+    else
+      {:error, reason} ->
+        actions = [
+          {:state_timeout, @timeout, :code_expired},
+          {:reply, from, {:error, reason}}
+        ]
+
+        {:keep_state_and_data, actions}
+    end
+  end
+  def ready({:call, from}, {:publish, params}, %{socket: socket}) do
+    [
+      address: address,
+      body: body,
+      headers: headers
+    ] = params
+
+    :ok = BusService.publish(socket, address, body, headers)
 
     actions = [
       {:state_timeout, @timeout, :code_expired},
-      {:reply, from, {:ok, response}}
+      {:reply, from, :ok}
     ]
 
     {:keep_state_and_data, actions}

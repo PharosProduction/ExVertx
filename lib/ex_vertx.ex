@@ -17,4 +17,9 @@ defmodule ExVertx do
   def send(address, body, headers \\ %{}, reply_address \\ "") do
     BusServer.send(address, body, headers, reply_address)
   end
+
+  @spec publish(binary, map, map) :: :ok
+  def publish(address, body, headers \\ %{}) do
+    BusServer.publish(address, body, headers)
+  end
 end

@@ -51,6 +51,18 @@ defmodule ExVertx.BusService do
     end
   end
 
+  @spec publish(port, binary, map, map) :: :ok
+  def publish(socket, address, body, headers) do
+    msg = %{
+      "type" => "publish",
+      "address" => address,
+      "body" => body,
+      "headers" => headers
+    } |> Jason.encode!
+
+    :gen_tcp.send(socket, msg)
+  end
+
   @spec close(port) :: :ok | {:error, atom}
   def close(socket) do
     with :ok <- :gen_tcp.shutdown(socket, :write),
