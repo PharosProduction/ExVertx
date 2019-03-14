@@ -59,6 +59,7 @@ defmodule ExVertx.MixProject do
 
   defp deps do
     [
+      {:gproc, "~> 0.8"},
       {:jason, "~> 1.1"},
       {:ex_doc, "~> 0.19", only: [:dev], runtime: false},
       {:excoveralls, "~> 0.10", only: [:test]},
