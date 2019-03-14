@@ -70,7 +70,7 @@ defmodule ExVertx.BusServer do
     :gen_statem.call(pid, {:publish, params}, @timeout)
   end
 
-  # @spec register(binary, map) :: :ok
+  @spec register(binary, map) :: :ok
   def register(address, headers) do
     params = [
       address: address,
@@ -81,7 +81,7 @@ defmodule ExVertx.BusServer do
     :gen_statem.call(pid, {:register, params}, @timeout)
   end
 
-  # @spec unregister(binary, map) :: :ok
+  @spec unregister(binary) :: :ok
   def unregister(address) do
     [pid | _] = :gproc.lookup_pids(topic(address))
     :gen_statem.call(pid, {:unregister, address: address}, @timeout)

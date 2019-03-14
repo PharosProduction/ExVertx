@@ -63,7 +63,7 @@ defmodule ExVertx.BusService do
     :gen_tcp.send(socket, msg)
   end
 
-  # @spec register(port, binary, map) :: :ok
+  @spec register(port, binary, map) :: :ok
   def register(socket, address, headers) do
     msg = %{
       "type" => "register",
@@ -74,7 +74,7 @@ defmodule ExVertx.BusService do
     :gen_tcp.send(socket, msg)
   end
 
-  # @spec unregister(port, binary) :: :ok
+  @spec unregister(port, binary) :: :ok
   def unregister(socket, address) do
     msg = %{
       "type" => "unregister",

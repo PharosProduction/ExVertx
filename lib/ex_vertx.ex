@@ -28,12 +28,12 @@ defmodule ExVertx do
     BusServer.register(address, headers)
   end
 
-  # @spec unregister(binary) :: :ok
+  @spec unregister(binary) :: :ok
   def unregister(address) do
     BusServer.unregister(address)
   end
 
-  # @spec stop(binary) :: :ok
+  @spec stop(binary) :: :ok
   def stop(address) do
     BusServer.stop(address)
   end
