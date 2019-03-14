@@ -19,6 +19,7 @@ defmodule ExVertx.MixProject do
         plt_apps: [:erts, :kernel, :stdlib],
         list_unused_filters: true,
         halt_exit_status: true,
+        ignore_warnings: "dialyzer.ignore",
         flags: [
           "-Wunmatched_returns",
           "-Werror_handling",

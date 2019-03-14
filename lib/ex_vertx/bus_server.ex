@@ -20,6 +20,7 @@ defmodule ExVertx.BusServer do
     }
   end
 
+  @spec start_link(list) :: no_return
   def start_link([{:id, id} | _params] = args) do
     opts = [
       name: via(id),
@@ -65,7 +66,7 @@ defmodule ExVertx.BusServer do
   # States
 
   def ready({:call, from}, :get_state, _), do: {:keep_state_and_data, {:reply, from, :ready}}
-  def ready({:call, from}, {:send, msg}, %{id: id, socket: socket}) do
+  def ready({:call, from}, {:send, msg}, %{socket: socket}) do
     {:ok, response} = BusService.send(socket, msg)
 
     actions = [

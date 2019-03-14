@@ -10,7 +10,7 @@ defmodule ExVertx.BusService do
 
   # Public
 
-  @spec connect(binary, integer) :: {:ok, port} | {:error, binary}
+  @spec connect(binary, integer) :: {:ok, port} | {:error, :atom}
   def connect(host, port) do
     opts = [:binary, :inet, active: false, packet: 4]
     :gen_tcp.connect(host |> to_charlist, port, opts, @timeout)
@@ -31,7 +31,7 @@ defmodule ExVertx.BusService do
     end
   end
 
-  @spec send(port, map) :: {:ok, map} | {:error, binary}
+  @spec send(port, map) :: {:ok, map} | {:error, :atom}
   def send(socket, json) do
     with msg <- Jason.encode!(json),
     :ok <- :gen_tcp.send(socket, msg),
@@ -40,13 +40,16 @@ defmodule ExVertx.BusService do
       {:ok, respons_json}
     else
       {:error, reason} -> {:error, reason}
-      other -> {:error, other}
     end
   end
 
-  @spec close(port) :: :ok
+  @spec close(port) :: :ok | {:error, :atom}
   def close(socket) do
-    :gen_tcp.shutdown(socket, :write)
-    :gen_tcp.close(socket)
+    with :ok <- :gen_tcp.shutdown(socket, :write),
+    :ok <- :gen_tcp.close(socket) do
+      :ok
+    else 
+      {:error, reason} -> {:error, reason}
+    end
   end
 end
