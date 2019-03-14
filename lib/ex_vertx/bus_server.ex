@@ -13,20 +13,20 @@ defmodule ExVertx.BusServer do
 
   def child_spec([{:id, id} | _] = args) do
     %{
-      id: id, 
-      start: {__MODULE__, :start_link, [args]}, 
-      restart: :transient, 
+      id: id,
+      start: {__MODULE__, :start_link, [args]},
+      restart: :transient,
       type: :worker
     }
   end
 
-  def start_link([{:id, id} | _params] = args) do 
+  def start_link([{:id, id} | _params] = args) do
     opts = [
       name: via(id),
       hibernate_after: @hibernate
     ]
     :gen_statem.start_link(__MODULE__, args, opts)
-  end  
+  end
 
   def get_state(id) do
     with [pid | _] <- :gproc.lookup_pids(topic(id)) do
@@ -38,8 +38,8 @@ defmodule ExVertx.BusServer do
 
   def send(id) do
     json = %{
-      "type" => "send", 
-      "address" => "test.echo", 
+      "type" => "send",
+      "address" => "test.echo",
       "body" => %{"counter" => 5},
       "headers" => %{},
       "replyAddress" => "test.echo.reply"
@@ -82,7 +82,7 @@ defmodule ExVertx.BusServer do
   @impl true
   def init([{:id, id} | _params]) do
     :gproc.reg(topic(id))
-    
+
     with {:ok, socket} <- BusService.connect("localhost", 6000),
     :ok <- BusService.ping(socket) do
       data = %{id: id, socket: socket}
@@ -91,7 +91,7 @@ defmodule ExVertx.BusServer do
       {:error, reason} -> {:stop, reason}
     end
   end
-  
+
   @impl true
   def callback_mode, do: :state_functions
 

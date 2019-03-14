@@ -1,8 +1,9 @@
 defmodule ExVertx do
+  @moduledoc false
 
   alias ExVertx.{
-    BusSupervisor, 
-    BusServer
+    BusServer,
+    BusSupervisor
   }
 
   # Public
