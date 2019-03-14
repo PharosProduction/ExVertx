@@ -1,0 +1,12 @@
+{application,certifi,
+             [{description,"CA bundle adapted from Mozilla by https://certifi.io"},
+              {vsn,"2.5.1"},
+              {registered,[]},
+              {applications,[kernel,stdlib]},
+              {env,[]},
+              {modules,[]},
+              {maintainers,["Benoit Chesneau"]},
+              {licenses,["BSD"]},
+              {links,[{"Github","https://github.com/certifi/erlang-certifi"}]},
+              {files,["src","priv","test","rebar.config","README.md",
+                      "LICENSE"]}]}.
