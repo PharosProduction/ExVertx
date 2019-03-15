@@ -4,9 +4,6 @@ defmodule ExVertx.BusService do
   # Attributes
 
   @timeout 1_000
-  @type_key "type"
-  @ping "ping"
-  @pong "pong"
 
   # Public
 
@@ -18,12 +15,12 @@ defmodule ExVertx.BusService do
 
   @spec ping(port) :: :ok | {:error, binary}
   def ping(socket) do
-    msg = %{@type_key => @ping}
+    msg = %{"type" => "ping"}
     |> Jason.encode!
 
     with :ok <- :gen_tcp.send(socket, msg),
     {:ok, msg} <- :gen_tcp.recv(socket, 0),
-    %{@type_key => @pong} <- Jason.decode!(msg) do
+    %{"type" => "pong"} <- Jason.decode!(msg) do
       :ok
     else
       {:error, reason} -> {:error, reason}

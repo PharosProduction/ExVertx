@@ -66,8 +66,11 @@ defmodule ExVertx.BusServer do
       headers: headers
     ]
 
-    [pid | _] = :gproc.lookup_pids(topic(address))
-    :gen_statem.call(pid, {:publish, params}, @timeout)
+    with [pid | _] <- :gproc.lookup_pids(topic(address)) do
+      :gen_statem.call(pid, {:publish, params}, @timeout)
+    else
+      [] -> {:error, :not_found}
+    end
   end
 
   @spec register(binary, map) :: :ok
@@ -97,6 +100,16 @@ defmodule ExVertx.BusServer do
   end
 
   # States
+
+  def connected({:call, from}, :get_state, _), do: {:keep_state_and_data, {:reply, from, :connected}}
+  def connected(:internal, :ping, %{socket: socket} = data) do
+    with :ok <- BusService.ping(socket) do
+      {:next_state, :ready, data}
+    else
+      {:error, _reason} -> {:keep_state_and_data, []}
+    end
+  end
+  def connected({:call, from}, _, _), do: {:keep_state_and_data, {:reply, from, :not_allowed}}
 
   def ready({:call, from}, :get_state, _), do: {:keep_state_and_data, {:reply, from, :ready}}
   def ready({:call, from}, {:send, params}, %{socket: socket}) do
@@ -170,13 +183,14 @@ defmodule ExVertx.BusServer do
   # Callbacks
 
   @impl true
-  def init([{:address, address} | _params]) do
+  def init([{:address, address}, {:host, host}, {:port, port} | _params]) do
     :gproc.reg(topic(address))
 
-    with {:ok, socket} <- BusService.connect("localhost", 6000),
-    :ok <- BusService.ping(socket) do
+    with {:ok, socket} <- BusService.connect(host, port) do
       data = %{address: address, socket: socket}
-      {:ok, :ready, data, []}
+      actions = [{:next_event, :internal, :ping}]
+
+      {:ok, :connected, data, actions}
     else
       {:error, reason} -> {:stop, reason}
     end
