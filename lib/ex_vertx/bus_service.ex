@@ -14,12 +14,12 @@ defmodule ExVertx.BusService do
   end
 
   @spec ping(port) :: :ok | {:error, binary}
-  def ping(socket) do
+  def ping(socket, timeout \\ :infinity) do
     msg = %{"type" => "ping"}
     |> Jason.encode!
 
     with :ok <- :gen_tcp.send(socket, msg),
-    {:ok, msg} <- :gen_tcp.recv(socket, 0),
+    {:ok, msg} <- :gen_tcp.recv(socket, 0, timeout),
     %{"type" => "pong"} <- Jason.decode!(msg) do
       :ok
     else
@@ -29,7 +29,7 @@ defmodule ExVertx.BusService do
   end
 
   @spec send(port, binary, map, map, binary) :: {:ok, map} | {:error, atom}
-  def send(socket, address, body, headers, reply_address) do
+  def send(socket, address, body, headers, reply_address, timeout \\ :infinity) do
     json = %{
       "type" => "send",
       "address" => address,
@@ -40,7 +40,7 @@ defmodule ExVertx.BusService do
 
     with msg <- Jason.encode!(json),
     :ok <- :gen_tcp.send(socket, msg),
-    {:ok, response} <- :gen_tcp.recv(socket, 0),
+    {:ok, response} <- :gen_tcp.recv(socket, 0, timeout),
     respons_json <- Jason.decode!(response) do
       {:ok, respons_json}
     else
@@ -71,6 +71,10 @@ defmodule ExVertx.BusService do
     :gen_tcp.send(socket, msg)
   end
 
+  def listen(socket, timeout \\ :infinity) do
+    :gen_tcp.recv(socket, 0, timeout)
+  end
+
   @spec unregister(port, binary) :: :ok
   def unregister(socket, address) do
     msg = %{
@@ -83,6 +87,7 @@ defmodule ExVertx.BusService do
 
   @spec close(port) :: :ok | {:error, atom}
   def close(socket) do
+    IO.puts "CLOSE SOCKET"
     with :ok <- :gen_tcp.shutdown(socket, :write),
     :ok <- :gen_tcp.close(socket) do
       :ok
