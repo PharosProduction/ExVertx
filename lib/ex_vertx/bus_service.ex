@@ -1,16 +1,12 @@
 defmodule ExVertx.BusService do
   @moduledoc false
 
-  # Attributes
-
-  @timeout 1_000
-
   # Public
 
   @spec connect(binary, integer) :: {:ok, port} | {:error, atom}
-  def connect(host, port) do
+  def connect(host, port, timeout \\ :infinity) do
     opts = [:binary, :inet, active: false, packet: 4]
-    :gen_tcp.connect(host |> to_charlist, port, opts, @timeout)
+    :gen_tcp.connect(host |> to_charlist, port, opts, timeout)
   end
 
   @spec ping(port) :: :ok | {:error, binary}
@@ -71,6 +67,7 @@ defmodule ExVertx.BusService do
     :gen_tcp.send(socket, msg)
   end
 
+  @spec listen(port, integer | :infinity) :: :ok
   def listen(socket, timeout \\ :infinity) do
     :gen_tcp.recv(socket, 0, timeout)
   end
@@ -81,8 +78,8 @@ defmodule ExVertx.BusService do
       "type" => "unregister",
       "address" => address
     } |> Jason.encode!
-
-    :gen_tcp.send(socket, msg)
+    IO.puts "UNREGISTER"
+    :ok = :gen_tcp.send(socket, msg)
   end
 
   @spec close(port) :: :ok | {:error, atom}
