@@ -9,8 +9,8 @@ defmodule ExVertx.BusSupervisor do
     DynamicSupervisor.start_link(__MODULE__, args, name: __MODULE__)
   end
 
-  def start_child(address, [{:host, _}, {:port, _}, {:timeout, _} | _] = args) do
-    spec = {ExVertx.BusServer, [{:address, address} | args]}
+  def start_child([address: _, host: _, port: _, from: _, timeout: _] = args) do
+    spec = {ExVertx.BusServer, args}
     DynamicSupervisor.start_child(__MODULE__, spec)
   end
 

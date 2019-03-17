@@ -8,33 +8,39 @@ defmodule ExVertx do
 
   # Public
 
-  @spec start_server(binary, binary, integer) :: {:ok, pid} | {:error, atom}
-  def start_server(address, host, port, timeout \\ :infinity) do
-    BusSupervisor.start_child(address, [host: host, port: port, timeout: timeout])
+  @spec start_server(binary, binary, integer, pid, integer | :infinity) :: {:ok, pid} | {:error, atom}
+  def start_server(address, host, port, from, timeout \\ :infinity) do
+    [address: address, host: host, port: port, from: from, timeout: timeout]
+    |> BusSupervisor.start_child
   end
 
   @spec send(binary, map, map, binary) :: {:ok, map} | {:error, atom}
   def send(address, body, headers \\ %{}, reply_address \\ "") do
-    BusServer.send(address, body, headers, reply_address)
+    [address: address, body: body, headers: headers, reply_address: reply_address]
+    |> BusServer.send
   end
 
-  @spec publish(binary, map, map) :: :ok
+  @spec publish(binary, map, map) :: :ok | {:error, atom}
   def publish(address, body, headers \\ %{}) do
-    BusServer.publish(address, body, headers)
+    [address: address, body: body, headers: headers]
+    |> BusServer.publish
   end
 
-  @spec register(binary, map) :: :ok
+  @spec register(binary, map) :: :ok | {:error, atom}
   def register(address, headers \\ %{}) do
-    BusServer.register(address, headers)
+    [address: address, headers: headers]
+    |> BusServer.register
   end
 
-  @spec unregister(binary) :: :ok
+  @spec unregister(binary) :: :ok | {:error, atom}
   def unregister(address) do
-    BusServer.unregister(address)
+    [address: address]
+    |> BusServer.unregister
   end
 
-  @spec stop(binary) :: :ok
+  @spec stop(binary) :: :ok | {:error, atom}
   def stop(address) do
-    BusServer.stop(address)
+    [address: address]
+    |> BusServer.stop
   end
 end

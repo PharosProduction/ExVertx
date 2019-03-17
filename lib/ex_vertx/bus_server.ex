@@ -23,7 +23,7 @@ defmodule ExVertx.BusServer do
   end
 
   @spec start_link(list) :: no_return
-  def start_link([{:address, address}, {:host, _}, {:port, _}, {:timeout, _} | _] = args) do
+  def start_link([address: address, host: _, port: _, from: _, timeout: _] = args) do
     opts = [
       name: via(address),
       hibernate_after: @hibernate
@@ -31,66 +31,40 @@ defmodule ExVertx.BusServer do
     :gen_statem.start_link(__MODULE__, args, opts)
   end
 
-  @spec get_state(binary) :: :ok | {:error, atom}
-  def get_state(address) do
+  @spec send(list) :: {:ok, map} | {:error, atom}
+  def send([address: address, body: _, headers: _, reply_address: _] = args) do
     case pid(address) do
-      {:ok, pid} -> :gen_statem.call(pid, :get_state, @timeout)
+      {:ok, pid} -> :gen_statem.call(pid, {:send, args}, @timeout)
       {:error, reason} -> {:error, reason}
     end
   end
 
-  @spec send(binary, map, map, binary) :: {:ok, map} | {:error, atom}
-  def send(address, body, headers, reply_address) do
-    params = [
-      address: address,
-      body: body,
-      headers: headers,
-      reply_address: reply_address
-    ]
-
+  @spec publish(list) :: :ok | {:error, atom}
+  def publish([address: address, body: _, headers: _] = args) do
     case pid(address) do
-      {:ok, pid} -> :gen_statem.call(pid, {:send, params}, @timeout)
+      {:ok, pid} -> :gen_statem.call(pid, {:publish, args}, @timeout)
       {:error, reason} -> {:error, reason}
     end
   end
 
-  @spec publish(binary, map, map) :: :ok
-  def publish(address, body, headers) do
-    params = [
-      address: address,
-      body: body,
-      headers: headers
-    ]
-
+  @spec register(list) :: :ok | {:error, atom}
+  def register([address: address, headers: _] = args) do
     case pid(address) do
-      {:ok, pid} -> :gen_statem.call(pid, {:publish, params}, @timeout)
+      {:ok, pid} -> :gen_statem.call(pid, {:register, args}, @timeout)
       {:error, reason} -> {:error, reason}
     end
   end
 
-  @spec register(binary, map) :: :ok
-  def register(address, headers) do
-    params = [
-      address: address,
-      headers: headers
-    ]
-
-    case pid(address) do
-      {:ok, pid} -> :gen_statem.call(pid, {:register, params}, @timeout)
-      {:error, reason} -> {:error, reason}
-    end
-  end
-
-  @spec unregister(binary) :: :ok
-  def unregister(address) do
+  @spec unregister(list) :: :ok | {:error, atom}
+  def unregister(address: address) do
     case pid(address) do
       {:ok, pid} -> :gen_statem.call(pid, :unregister, @timeout)
       {:error, reason} -> {:error, reason}
     end
   end
 
-  @spec stop(binary) :: :ok | {:error, atom}
-  def stop(address) do
+  @spec stop(list) :: :ok | {:error, atom}
+  def stop(address: address) do
     case pid(address) do
       {:ok, pid} -> :gen_statem.stop(pid)
       {:error, reason} -> {:error, reason}
@@ -99,17 +73,15 @@ defmodule ExVertx.BusServer do
 
   # States
 
-  def connected({:call, from}, :get_state, _), do: {:keep_state_and_data, {:reply, from, :connected}}
-  def connected(:internal, :ping, %{socket: socket} = data) do
-    with :ok <- BusService.ping(socket) do
-      {:next_state, :ready, data}
-    else
-      {:error, _reason} -> {:keep_state_and_data, []}
+  def connected(:internal, {:ping, from}, %{socket: socket} = data) do
+    IO.puts "CONNECTED FROM: #{inspect from}"
+    case BusService.ping(socket) do
+      :ok -> {:next_state, :ready, data}
+      {:error, reason} -> {:keep_state_and_data, {:reply, from, {:error, reason}}}
     end
   end
   def connected({:call, from}, _, _), do: {:keep_state_and_data, {:reply, from, {:not_allowed, :connected}}}
 
-  def ready({:call, from}, :get_state, _), do: {:keep_state_and_data, {:reply, from, :ready}}
   def ready({:call, from}, {:send, params}, %{socket: socket}) do
     [
       address: address,
@@ -164,7 +136,6 @@ defmodule ExVertx.BusServer do
   end
   def ready({:call, from}, _, _), do: {:keep_state_and_data, {:reply, from, {:not_allowed, :ready}}}
 
-  def listening({:call, from}, :get_state, _), do: {:keep_state_and_data, {:reply, from, :listening}}
   def listening(:internal, :registered, %{socket: socket} = data) do
     IO.puts "LISTENING AGAIN"
     timeout = Map.get(data, :timeout, :infinity)
@@ -192,14 +163,16 @@ defmodule ExVertx.BusServer do
   # Callbacks
 
   @impl true
-  def init([{:address, address}, {:host, host}, {:port, port}, {:timeout, timeout} | _params]) do
-    :gproc.reg(topic(address))
+  def init(address: address, host: host, port: port, from: from, timeout: timeout) do
+    with :ok <- reg(address),
+    {:ok, socket} <- BusService.connect(host, port) do
+      data = %{
+        address: address, 
+        socket: socket, 
+        timeout: timeout
+      }
 
-    with {:ok, socket} <- BusService.connect(host, port) do
-      data = %{address: address, socket: socket, timeout: timeout}
-      actions = [{:next_event, :internal, :ping}]
-
-      {:ok, :connected, data, actions}
+      {:ok, :connected, data, {:next_event, :internal, {:ping, from}}}
     else
       {:error, reason} -> {:stop, reason}
     end
@@ -210,9 +183,8 @@ defmodule ExVertx.BusServer do
 
   @impl true
   def terminate(_reason, _state, %{socket: socket}) do
-    with :ok <- BusService.close(socket) do
-      :nothing
-    else
+    case BusService.close(socket) do
+      :ok -> :nothing
       {:error, reason} -> {:error, reason}
     end
   end
@@ -222,6 +194,16 @@ defmodule ExVertx.BusServer do
   defp topic(address), do: {:n, :l, {:bus_service, address}}
 
   defp via(address), do: {:via, :gproc, topic(address)}
+
+  defp reg(address) do
+    address
+    |> topic
+    |> :gproc.reg
+    |> case do
+      true -> :ok
+      false -> {:error, "Unable to register the process"}
+    end
+  end
 
   defp pid(address) do
     address
