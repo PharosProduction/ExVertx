@@ -1,6 +1,8 @@
 defmodule ExVertx.MixProject do
   use Mix.Project
 
+  @version "1.0.0"
+
   def project do
     [
       app: :ex_vertx,
@@ -30,17 +32,28 @@ defmodule ExVertx.MixProject do
       ],
       deps: deps(),
       aliases: aliases(),
+      package: package(),
 
       # Docs
       name: "ExVertx",
-      version: "1.0.0",
+      source_ref: "v#{@version}",
+      version: @version,
+      description: "Elixir to Vert.x TCP bridge connector.",
       source_url: "https://github.com/PharosProduction/ex-vertx",
       homepage_url: "https://pharosproduction.com",
       docs: [
-        logo: "./images/ex-vertx-logo.svg",
         output: "./docs",
-        extras: ["README.md", "ENVIRONMENT.md"]
+        extras: ["README.md", "LICENSE.nd"]
       ]
+    ]
+  end
+
+  defp package do
+    [
+      files: ["lib", "mix.exs", "README.md", "LICENSE.md"],
+      maintainers: ["Dmytro Nasyrov", "Pharos Production Inc."],
+      licenses: ["Apache 2.0"],
+      links: %{"GitHub" => "https://github.com/PharosProduction/ExVertx"}
     ]
   end
 

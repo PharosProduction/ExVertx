@@ -12,7 +12,8 @@ defmodule ExVertx.BusServer do
 
   # Public
 
-  @spec child_spec(list) :: map
+  @spec child_spec([from: {pid, reference}, address: binary, host: binary, port: integer, timeout: integer | :infinity])
+  :: map
   def child_spec([from: _, address: address, host: _, port: _, timeout: _] = args) do
     %{
       id: address,
@@ -22,7 +23,8 @@ defmodule ExVertx.BusServer do
     }
   end
 
-  @spec start_link(list) :: no_return
+  @spec start_link([from: {pid, reference}, address: binary, host: binary, port: integer, timeout: integer | :infinity])
+  :: no_return
   def start_link([from: _, address: address, host: _, port: _, timeout: _] = args) do
     opts = [
       name: via(address),
@@ -39,15 +41,15 @@ defmodule ExVertx.BusServer do
     end
   end
 
-  @spec publish(list) :: :ok | {:error, atom}
+  @spec publish([address: binary, body: map, headers: map]) :: :ok | {:error, :not_found}
   def publish([address: address, body: _, headers: _] = args) do
     case pid(address) do
       {:ok, pid} -> :gen_statem.cast(pid, {:publish, args})
-      {:error, reason} -> {:error, reason}
+      {:error, :not_found} -> {:error, :not_found}
     end
   end
 
-  @spec register(list) :: :ok | {:error, atom}
+  @spec register([address: binary, body: map]) :: :ok | {:error, atom}
   def register([address: address, headers: _] = args) do
     case pid(address) do
       {:ok, pid} -> :gen_statem.cast(pid, {:register, args})
@@ -55,19 +57,19 @@ defmodule ExVertx.BusServer do
     end
   end
 
-  @spec unregister(list) :: :ok | {:error, atom}
-  def unregister([address: address] = args) do
+  @spec unregister([address: binary]) :: :ok | {:error, :not_found}
+  def unregister(address: address) do
     case pid(address) do
       {:ok, pid} -> :gen_statem.cast(pid, :unregister)
       {:error, reason} -> {:error, reason}
     end
   end
 
-  @spec stop(list) :: :ok | {:error, atom}
+  @spec stop([address: binary]) :: :ok | {:error, :not_found}
   def stop(address: address) do
     case pid(address) do
       {:ok, pid} -> :gen_statem.stop(pid)
-      {:error, reason} -> {:error, reason}
+      {:error, :not_found} -> {:error, :not_found}
     end
   end
 
@@ -92,25 +94,25 @@ defmodule ExVertx.BusServer do
 
     {:keep_state_and_data, {:reply, from, :ok}}
   end
-  def ready(:cast, {:register, [address: address, headers: headers] = attrs}, %{from: from, socket: socket} = data) do
+  def ready(:cast, {:register, address: address, headers: headers}, %{socket: socket} = data) do
     :ok = BusService.register(socket, address: address, headers: headers)
 
     {:next_state, :listening, data, {:next_event, :internal, :registered}}
   end
   def ready({:call, _}, _, %{from: from}), do: {:keep_state_and_data, {:reply, from, {:not_allowed, :ready}}}
 
-  def listening(:internal, :registered, %{from: {pid, ref}, socket: socket, timeout: timeout} = data) do
-    with {:ok, event} <- BusService.listen(pid, socket, timeout: timeout) do
-      {:keep_state_and_data, []}
+  def listening(:internal, :registered, %{from: {pid, _ref}, socket: socket, timeout: timeout}) do
+    with {:error, reason} <- BusService.listen(pid, socket, timeout: timeout) do
+      {:stop, reason}
     else
-      {:error, reason} -> {:stop, reason}
+      _ -> {:keep_state_and_data, []}
     end
   end
-  def listening(:cast, :unregister, %{address: address, from: from, socket: socket} = data) do
-    case BusService.unregister(socket, address: address) do
-      :ok -> {:next_state, :suspended, data, []}
-      {:error, reason} -> {:keep_state_and_data, []}
-    end    
+  def listening(:cast, :unregister, %{address: address, socket: socket} = data) do
+    :ok = socket
+    |> BusService.unregister(address: address)
+
+    {:next_state, :suspended, data, []}
   end
   def listening({:call, _}, _, %{from: from}), do: {:keep_state_and_data, {:reply, from, {:not_allowed, :listening}}}
 
@@ -122,7 +124,7 @@ defmodule ExVertx.BusServer do
   end
   def suspended({:call, _}, _, %{from: from}), do: {:keep_state_and_data, {:reply, from, {:not_allowed, :suspended}}}
 
-  def stopped(:internal, :shutdown, %{from: from, socket: socket} = data) do
+  def stopped(:internal, :shutdown, %{from: from}) do
     {:keep_state_and_data, [{:reply, from, :stopped}]}
   end
   def stopped({:call, _}, _, %{from: from}), do: {:keep_state_and_data, {:reply, from, {:not_allowed, :stopped}}}
@@ -136,8 +138,8 @@ defmodule ExVertx.BusServer do
     {:ok, socket} <- BusService.connect(attrs) do
       data = %{
         from: from,
-        address: address, 
-        socket: socket, 
+        address: address,
+        socket: socket,
         timeout: timeout
       }
 

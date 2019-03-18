@@ -20,7 +20,7 @@ defmodule ExVertx do
     |> BusServer.send
   end
 
-  @spec publish(binary, map, map) :: :ok | {:error, atom}
+  @spec publish(binary, map, map) :: :ok | {:error, :not_found}
   def publish(address, body, headers \\ %{}) do
     [address: address, body: body, headers: headers]
     |> BusServer.publish
@@ -32,13 +32,13 @@ defmodule ExVertx do
     |> BusServer.register
   end
 
-  @spec unregister(binary) :: :ok | {:error, atom}
+  @spec unregister(binary) :: :ok | {:error, :not_found}
   def unregister(address) do
     [address: address]
     |> BusServer.unregister
   end
 
-  @spec stop(binary) :: :ok | {:error, atom}
+  @spec stop(binary) :: :ok | {:error, :not_found}
   def stop(address) do
     [address: address]
     |> BusServer.stop

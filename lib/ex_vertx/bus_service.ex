@@ -3,13 +3,13 @@ defmodule ExVertx.BusService do
 
   # Public
 
-  @spec connect(list) :: {:ok, port} | {:error, atom}
+  @spec connect([host: binary, port: integer, timeout: integer | :infinity]) :: {:ok, port} | {:error, atom}
   def connect(host: host, port: port, timeout: timeout) do
     opts = [:binary, :inet, active: false, packet: 4]
     :gen_tcp.connect(host |> to_charlist, port, opts, timeout)
   end
 
-  @spec ping(port, list) :: :ok | {:error, binary}
+  @spec ping(port, [timeout: integer | :infinity]) :: :ok | {:error, binary}
   def ping(socket, timeout: timeout) do
     msg = %{"type" => "ping"}
     |> Jason.encode!
@@ -24,7 +24,8 @@ defmodule ExVertx.BusService do
     end
   end
 
-  @spec send(port, list) :: {:ok, map} | {:error, atom}
+  @spec send(port, [address: binary, body: map, headers: map, reply_address: binary, timeout: integer | :infinity])
+  :: {:ok, map} | {:error, atom}
   def send(socket, address: address, body: body, headers: headers, reply_address: reply_address, timeout: timeout) do
     json = %{
       "type" => "send",
@@ -44,7 +45,7 @@ defmodule ExVertx.BusService do
     end
   end
 
-  @spec publish(port, list) :: :ok
+  @spec publish(port, [address: binary, body: map, headers: map]) :: :ok
   def publish(socket, address: address, body: body, headers: headers) do
     msg = %{
       "type" => "publish",
@@ -56,7 +57,7 @@ defmodule ExVertx.BusService do
     :gen_tcp.send(socket, msg)
   end
 
-  @spec register(port, list) :: :ok
+  @spec register(port, [address: binary, headers: map]) :: :ok
   def register(socket, address: address, headers: headers) do
     msg = %{
       "type" => "register",
@@ -67,17 +68,17 @@ defmodule ExVertx.BusService do
     :gen_tcp.send(socket, msg)
   end
 
-  @spec listen(pid, port, list) :: {:ok, binary} | {:error, atom}
+  @spec listen(pid, port, [timeout: integer | :infinity]) :: {:error, atom}
   def listen(from, socket, timeout: timeout) do
     case :gen_tcp.recv(socket, 0, timeout) do
       {:error, reason} -> {:error, reason}
-      {:ok, response} -> 
+      {:ok, response} ->
         Kernel.send(from, response)
         listen(from, socket, timeout: timeout)
     end
   end
 
-  @spec unregister(port, list) :: :ok
+  @spec unregister(port, [address: binary]) :: :ok
   def unregister(socket, address: address) do
     msg = %{
       "type" => "unregister",
