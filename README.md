@@ -8,15 +8,23 @@ An Elixir package to provide a connection between Elixir application and Vert.x 
 ## Important links
 
 ExVertx Github Repo
+
 [ExVertx on Github](https://github.com/PharosProduction/ExVertx)
 
 Connector to Vert.x event bus via TCP Event Bus Bridge
+
 [Vert.x TCP event bus bridge on Github](https://github.com/vert-x3/vertx-tcp-eventbus-bridge)
 
+How to integrate Vert.x TCP Event Bus Bridge into Java project
+
+[Vert.x TCP event bus bridge docs](https://vertx.io/docs/vertx-tcp-eventbus-bridge/java/)
+
 Hex.pm package is here
+
 [ExVertx package](https://hex.pm/packages/ex_vertx)
 
 Docs are here
+
 [ExVertx docs](https://hexdocs.pm/ex_vertx)
 
 ### Running tests
@@ -25,8 +33,8 @@ Docs are here
 
 "ExVertx" is Copyright (c) 2019 Pharos Production Inc.
 
-Created by [Dmytro Nasyrov](https://www.linkedin.com/in/blockchain-quorum-elixir-development/)
-Founder, CTO at Pharos Production Inc.
+Created by [Dmytro Nasyrov, Founder, CTO at Pharos Production Inc.](https://www.linkedin.com/in/blockchain-quorum-elixir-development/)
+
 [Pharos Production Inc. - Distributed Systems, Blockchain and FinTech enterprise software development](https://pharosproduction.com)
 
 The source code is under the Apache 2 License.
