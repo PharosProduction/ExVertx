@@ -7,25 +7,11 @@ An Elixir package to provide a connection between Elixir application and Vert.x 
 
 ## Important links
 
-ExVertx Github Repo
-
-[ExVertx on Github](https://github.com/PharosProduction/ExVertx)
-
-Connector to Vert.x event bus via TCP Event Bus Bridge
-
-[Vert.x TCP event bus bridge on Github](https://github.com/vert-x3/vertx-tcp-eventbus-bridge)
-
-How to integrate Vert.x TCP Event Bus Bridge into Java project
-
-[Vert.x TCP event bus bridge docs](https://vertx.io/docs/vertx-tcp-eventbus-bridge/java/)
-
-Hex.pm package is here
-
-[ExVertx package](https://hex.pm/packages/ex_vertx)
-
-Docs are here
-
-[ExVertx docs](https://hexdocs.pm/ex_vertx)
+* [ExVertx Github Repo](https://github.com/PharosProduction/ExVertx)
+* [Connector to Vert.x event bus via TCP Event Bus Bridge](https://github.com/vert-x3/vertx-tcp-eventbus-bridge)
+* [Vert.x TCP event bus bridge docs](https://vertx.io/docs/vertx-tcp-eventbus-bridge/java/)
+* [ExVertx Hex.pm package](https://hex.pm/packages/ex_vertx)
+* [ExVertx docs](https://hexdocs.pm/ex_vertx)
 
 ### Running tests
 
