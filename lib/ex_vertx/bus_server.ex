@@ -13,7 +13,7 @@ defmodule ExVertx.BusServer do
   # Public
 
   @spec child_spec(list) :: map
-  def child_spec([{:address, address}, {:host, _}, {:port, _}| _] = args) do
+  def child_spec([from: _, address: address, host: _, port: _, timeout: _] = args) do
     %{
       id: address,
       start: {__MODULE__, :start_link, [args]},
@@ -23,7 +23,7 @@ defmodule ExVertx.BusServer do
   end
 
   @spec start_link(list) :: no_return
-  def start_link([address: address, host: _, port: _, from: _, timeout: _] = args) do
+  def start_link([from: _, address: address, host: _, port: _, timeout: _] = args) do
     opts = [
       name: via(address),
       hibernate_after: @hibernate
@@ -42,7 +42,7 @@ defmodule ExVertx.BusServer do
   @spec publish(list) :: :ok | {:error, atom}
   def publish([address: address, body: _, headers: _] = args) do
     case pid(address) do
-      {:ok, pid} -> :gen_statem.call(pid, {:publish, args}, @timeout)
+      {:ok, pid} -> :gen_statem.cast(pid, {:publish, args})
       {:error, reason} -> {:error, reason}
     end
   end
@@ -50,15 +50,15 @@ defmodule ExVertx.BusServer do
   @spec register(list) :: :ok | {:error, atom}
   def register([address: address, headers: _] = args) do
     case pid(address) do
-      {:ok, pid} -> :gen_statem.call(pid, {:register, args}, @timeout)
+      {:ok, pid} -> :gen_statem.cast(pid, {:register, args})
       {:error, reason} -> {:error, reason}
     end
   end
 
   @spec unregister(list) :: :ok | {:error, atom}
-  def unregister(address: address) do
+  def unregister([address: address] = args) do
     case pid(address) do
-      {:ok, pid} -> :gen_statem.call(pid, :unregister, @timeout)
+      {:ok, pid} -> :gen_statem.cast(pid, :unregister)
       {:error, reason} -> {:error, reason}
     end
   end
@@ -73,106 +73,75 @@ defmodule ExVertx.BusServer do
 
   # States
 
-  def connected(:internal, {:ping, from}, %{socket: socket} = data) do
-    IO.puts "CONNECTED FROM: #{inspect from}"
-    case BusService.ping(socket) do
+  def connected(:internal, :ping, %{from: from, socket: socket, timeout: timeout} = data) do
+    case BusService.ping(socket, timeout: timeout) do
       :ok -> {:next_state, :ready, data}
       {:error, reason} -> {:keep_state_and_data, {:reply, from, {:error, reason}}}
     end
   end
-  def connected({:call, from}, _, _), do: {:keep_state_and_data, {:reply, from, {:not_allowed, :connected}}}
+  def connected({:call, _}, _, %{from: from}), do: {:keep_state_and_data, {:reply, from, {:not_allowed, :connected}}}
 
-  def ready({:call, from}, {:send, params}, %{socket: socket}) do
-    [
-      address: address,
-      body: body,
-      headers: headers,
-      reply_address: reply_address
-    ] = params
-
-    with {:ok, response} <- BusService.send(socket, address, body, headers, reply_address) do
-      actions = [
-        {:state_timeout, @timeout, :code_expired},
-        {:reply, from, {:ok, response}}
-      ]
-
-      {:keep_state_and_data, actions}
-    else
-      {:error, reason} ->
-        actions = [
-          {:state_timeout, @timeout, :code_expired},
-          {:reply, from, {:error, reason}}
-        ]
-
-        {:keep_state_and_data, actions}
+  def ready({:call, _}, {:send, [address: _, body: _, headers: _, reply_address: _] = attrs}, %{from: from, socket: socket}) do
+    case BusService.send(socket, attrs) do
+      {:ok, response} -> {:keep_state_and_data, {:reply, from, {:ok, response}}}
+      {:error, reason} -> {:keep_state_and_data, {:reply, from, {:error, reason}}}
     end
   end
-  def ready({:call, from}, {:publish, params}, %{socket: socket}) do
-    [
-      address: address,
-      body: body,
-      headers: headers
-    ] = params
+  def ready({:call, _}, {:publish, [address: _, body: _, headers: _] = attrs}, %{from: from, socket: socket}) do
+    :ok = BusService.publish(socket, attrs)
 
-    :ok = BusService.publish(socket, address, body, headers)
-
-    actions = [
-      {:state_timeout, @timeout, :code_expired},
-      {:reply, from, :ok}
-    ]
-
-    {:keep_state_and_data, actions}
+    {:keep_state_and_data, {:reply, from, :ok}}
   end
-  def ready({:call, _from}, {:register, params}, %{socket: socket} = data) do
-    [
-      address: address,
-      headers: headers
-    ] = params
+  def ready(:cast, {:register, [address: address, headers: headers] = attrs}, %{from: from, socket: socket} = data) do
+    :ok = BusService.register(socket, address: address, headers: headers)
 
-    :ok = BusService.register(socket, address, headers)
-
-    actions = [{:next_event, :internal, :registered}]
-    {:next_state, :listening, data, actions}
+    {:next_state, :listening, data, {:next_event, :internal, :registered}}
   end
-  def ready({:call, from}, _, _), do: {:keep_state_and_data, {:reply, from, {:not_allowed, :ready}}}
+  def ready({:call, _}, _, %{from: from}), do: {:keep_state_and_data, {:reply, from, {:not_allowed, :ready}}}
 
-  def listening(:internal, :registered, %{socket: socket} = data) do
-    IO.puts "LISTENING AGAIN"
-    timeout = Map.get(data, :timeout, :infinity)
-
-    with {:ok, event} <- BusService.listen(socket, timeout) do
-      # {m, f} = callback
-      # apply(m, f, [address, event])
-
-      actions = [{:next_event, :internal, :registered}]
-      IO.puts "EVENT: #{inspect event}"
-      {:keep_state_and_data, actions}
+  def listening(:internal, :registered, %{from: {pid, ref}, socket: socket, timeout: timeout} = data) do
+    with {:ok, event} <- BusService.listen(pid, socket, timeout: timeout) do
+      {:keep_state_and_data, []}
     else
       {:error, reason} -> {:stop, reason}
     end
   end
-  def listening({:call, _from}, :unregistered, %{socket: socket, address: address} = data) do
-    IO.puts "LISTENING"
-    :ok = BusService.unregister(socket, address)
-
-    actions = [{:next_event, :internal, []}]
-    {:next_state, :closed, data, actions}
+  def listening(:cast, :unregister, %{address: address, from: from, socket: socket} = data) do
+    case BusService.unregister(socket, address: address) do
+      :ok -> {:next_state, :suspended, data, []}
+      {:error, reason} -> {:keep_state_and_data, []}
+    end    
   end
-  def listening({:call, from}, _, _), do: {:keep_state_and_data, {:reply, from, {:not_allowed, :listening}}}
+  def listening({:call, _}, _, %{from: from}), do: {:keep_state_and_data, {:reply, from, {:not_allowed, :listening}}}
+
+  def suspended(:internal, :stopping, %{from: from, socket: socket} = data) do
+    case BusService.close(socket) do
+      :ok -> {:next_state, :stopped, data, {:next_event, :internal, :shutdown}}
+      {:error, reason} -> {:keep_state_and_data, {:reply, from, {:error, reason}}}
+    end
+  end
+  def suspended({:call, _}, _, %{from: from}), do: {:keep_state_and_data, {:reply, from, {:not_allowed, :suspended}}}
+
+  def stopped(:internal, :shutdown, %{from: from, socket: socket} = data) do
+    {:keep_state_and_data, [{:reply, from, :stopped}]}
+  end
+  def stopped({:call, _}, _, %{from: from}), do: {:keep_state_and_data, {:reply, from, {:not_allowed, :stopped}}}
 
   # Callbacks
 
   @impl true
-  def init(address: address, host: host, port: port, from: from, timeout: timeout) do
+  def init(from: from, address: address, host: host, port: port, timeout: timeout) do
     with :ok <- reg(address),
-    {:ok, socket} <- BusService.connect(host, port) do
+    attrs <- [host: host, port: port, timeout: timeout],
+    {:ok, socket} <- BusService.connect(attrs) do
       data = %{
+        from: from,
         address: address, 
         socket: socket, 
         timeout: timeout
       }
 
-      {:ok, :connected, data, {:next_event, :internal, {:ping, from}}}
+      {:ok, :connected, data, {:next_event, :internal, :ping}}
     else
       {:error, reason} -> {:stop, reason}
     end

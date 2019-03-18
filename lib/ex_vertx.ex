@@ -8,9 +8,9 @@ defmodule ExVertx do
 
   # Public
 
-  @spec start_server(binary, binary, integer, pid, integer | :infinity) :: {:ok, pid} | {:error, atom}
-  def start_server(address, host, port, from, timeout \\ :infinity) do
-    [address: address, host: host, port: port, from: from, timeout: timeout]
+  @spec start_server(pid, binary, binary, integer, integer | :infinity) :: {:ok, pid} | {:error, atom}
+  def start_server(from, address, host, port, timeout \\ :infinity) do
+    [from: from, address: address, host: host, port: port, timeout: timeout]
     |> BusSupervisor.start_child
   end
 
