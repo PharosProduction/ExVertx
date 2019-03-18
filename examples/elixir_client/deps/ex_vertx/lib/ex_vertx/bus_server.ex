@@ -102,16 +102,15 @@ defmodule ExVertx.BusServer do
   def ready({:call, _}, _, %{from: from}), do: {:keep_state_and_data, {:reply, from, {:not_allowed, :ready}}}
 
   def listening(:internal, :registered, %{from: {pid, _ref}, socket: socket, timeout: timeout}) do
-    spawn_link(fn ->
-      BusService.listen(pid, socket, timeout: timeout)
-    end)
-
-    {:keep_state_and_data, []}
+    with {:error, reason} <- BusService.listen(pid, socket, timeout: timeout) do
+      {:stop, reason}
+    else
+      _ -> {:keep_state_and_data, []}
+    end
   end
   def listening(:cast, :unregister, %{address: address, socket: socket} = data) do
-    spawn_link(fn ->
-      BusService.unregister(socket, address: address)
-    end)
+    :ok = socket
+    |> BusService.unregister(address: address)
 
     {:next_state, :suspended, data, []}
   end

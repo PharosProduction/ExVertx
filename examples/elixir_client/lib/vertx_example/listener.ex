@@ -1,9 +1,9 @@
-defmodule ExVertx.Listener do
+defmodule VertxExample.Listener do
   use GenServer
 
-  @event_host = "localhost"
-  @event_port = 6_000
-  @event_address = "test.time-send"
+  @event_host "localhost"
+  @event_port 6_000
+  @event_address "test.time-send"
 
   # Public
 
@@ -20,8 +20,11 @@ defmodule ExVertx.Listener do
 
   @impl true
   def handle_continue(:register, state) do
+    IO.puts "Starting Vert.x bridge"
+
     with {:ok, _pid} <- ExVertx.start_server({self(), make_ref()}, @event_address, @event_host, @event_port),
     :ok <- ExVertx.register(@event_address) do
+      IO.puts "Subscribed to test.time-send address"
       {:noreply, state}
     else
       {:error, reason} -> {:stop, reason}
@@ -30,12 +33,14 @@ defmodule ExVertx.Listener do
 
   @impl true
   def handle_info(msg, state) when length(state) < 3 do
+    IO.puts "Received a message from Vert.x: #{inspect msg}"
+
     {:noreply, [msg | state]}
   end
   def handle_info(msg, state) do
-    IO.puts "STATE: #{inspect state}"
-    a = ExVertx.unregister(@event_address)
-    b = ExVertx.stop(@event_address)
+    IO.puts "Unregistering from Vert.x connection: #{inspect msg}"
+    ExVertx.unregister(@event_address)
+    IO.puts "Connection stopped"
 
     {:noreply, state}
   end

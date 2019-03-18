@@ -90,8 +90,9 @@ defmodule ExVertx.BusService do
 
   @spec close(port) :: :ok | {:error, atom}
   def close(socket) do
-    with :ok <- :gen_tcp.shutdown(socket, :write) do
-      :gen_tcp.close(socket)
+    with :ok <- :gen_tcp.shutdown(socket, :write),
+    :ok <- :gen_tcp.close(socket) do
+      :ok
     else
       {:error, reason} -> {:error, reason}
     end
