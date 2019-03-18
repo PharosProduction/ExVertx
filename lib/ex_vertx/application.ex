@@ -8,7 +8,6 @@ defmodule ExVertx.Application do
   @impl true
   def start(_type, _args) do
     children = [
-      {ExVertx.Listener, []},
       {DynamicSupervisor, strategy: :one_for_one, name: ExVertx.BusSupervisor}
     ]
 
