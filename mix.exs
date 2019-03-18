@@ -38,12 +38,13 @@ defmodule ExVertx.MixProject do
       name: "ExVertx",
       source_ref: "v#{@version}",
       version: @version,
+      canonical: "https://hexdocs.pm/ex_vertx",
       description: "Elixir to Vert.x TCP bridge connector.",
       source_url: "https://github.com/PharosProduction/ex-vertx",
       homepage_url: "https://pharosproduction.com",
       docs: [
         output: "./docs",
-        extras: ["README.md", "LICENSE.nd"]
+        extras: ["README.md", "LICENSE.md"]
       ]
     ]
   end
