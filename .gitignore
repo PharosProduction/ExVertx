@@ -1,18 +1,18 @@
 # The directory Mix will write compiled artifacts to.
 /_build/
-/examples/_build/
+/examples/elixir_client/_build/
 
 # If you run "mix test --cover", coverage assets end up here.
 /cover/
-/examples/cover/
+/examples/elixir_client/cover/
 
 # The directory Mix downloads your dependencies sources to.
 /deps/
-/examples/deps/
+/examples/elixir_client/deps/
 
 # Where 3rd-party dependencies like ExDoc output generated docs.
 /docs/
-/examples/docs/
+/examples/elixir_client/docs/
 
 # Ignore .fetch files in case you like to edit your project deps locally.
 /.fetch
